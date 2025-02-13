@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if ! command -v php >/dev/null 2>&1; then
+    echo "Installing PHP 8.4 and required extensions..."
+    sudo apk update && sudo apk add --no-cache \
+        php \
+        php-cli \
+        php-common \
+        php-curl \
+        php-gd \
+        php-mbstring \
+        php-sqlite3
+fi
+

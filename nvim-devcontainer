@@ -1,0 +1,33 @@
+#!/bin/bash
+nvim(){
+    if [ "$1" = "--container" ]; then
+        shift
+        cp -R -L $HOME/.config/nvim $HOME/.nvim-devcontainer/nvim
+
+        if [ ! $(which devcontainer) ]; then
+            echo "devcontainer not found. Please install it with 'npm install -g @devcontainer/cli'"
+            return 1
+        fi
+
+        config_file="$HOME/.nvim-devcontainer/devcontainer.json"
+
+        devcontainer up --workspace-folder . --config $config_file
+        rm -rf $HOME/.nvim-devcontainer/nvim
+
+        for arg in "$@"; do
+            install="${arg#--}"
+
+            file_path="$HOME/.nvim-devcontainer/scripts/installs/$install"
+
+            if [ -f "$file_path" ]; then
+                shift
+                echo "Running install script: $file_path"
+                devcontainer exec --workspace-folder . --config $config_file sh /home/devcontainer/.scripts/installs/$install
+            fi
+        done
+        devcontainer exec --workspace-folder . --remote-env="PS1=╰─➤  (devcontainer) " $@ --config $config_file sh
+    else
+        # use normal nvim if not in devcontainer
+        command nvim $@
+    fi
+}

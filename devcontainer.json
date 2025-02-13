@@ -1,0 +1,13 @@
+{
+  "name": "nvim",
+  "features": {},
+  "build": {
+    "context": "/${localEnv:HOME}/.nvim-devcontainer",
+    "dockerfile": "/${localEnv:HOME}/.nvim-devcontainer/Dockerfile"
+  },
+  "remoteUser": "devcontainer",
+  "containerUser": "devcontainer"
+}
+
+
+
