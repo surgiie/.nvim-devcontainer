@@ -31,6 +31,6 @@ nvim --container --php --node
 nvim --container --remote-env EXAMPLE_BAR=foo
 ```
 
-**Note** : When the `--container` option is omitted, this will run `nvim` to open neovim in your host machine.
+**Note** : When the `--container` option is omitted, this will run `nvim` to open neovim on the host machine.
 
 
