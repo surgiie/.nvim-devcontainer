@@ -1,6 +1,6 @@
 # nvim-devcontainer
 
-My personal setup for quickly spinning up a [devcontainer](https://github.com/devcontainers/cli) for neovim for development.
+My personal setup for quickly spinning up a [devcontainer](https://github.com/devcontainers/cli) for development with neovim.
 
 ## Prerequisites
 
