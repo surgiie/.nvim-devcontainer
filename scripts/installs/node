@@ -1,0 +1,6 @@
+#!/bin/bash
+
+if ! command -v node >/dev/null; then
+    sudo apk add nodejs npm
+fi
+

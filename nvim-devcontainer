@@ -1,0 +1,90 @@
+#!/bin/bash
+nvim() {
+    if [ "$1" = "--container" ] || [ "$1" = "--container-stop" ]; then
+
+        version="0.1.0"
+        export DOCKER_CLI_HINTS="false"
+        test -t 1 && USE_TTY="-t"
+
+        working_dir="$2"
+
+        if [ ! -z "$working_dir" ]; then
+            shift
+        fi
+
+        if [ -z "$working_dir" ] || [ "$working_dir" = "." ]; then
+            working_dir=$(pwd)
+        fi
+
+        image_tag="nvim-devcontainer:$version"
+
+        working_dir_base=$(basename "$working_dir")
+        working_dir_slug=$(echo "$working_dir_base" | sed 's/[^a-zA-Z0-9]/-/g')
+        working_dir_slug=$(echo "$working_dir_slug" | sed 's/^-//g' | sed 's/-$//g')
+        container_name="nvim-devcontainer-$version-$working_dir_slug"
+        if [ "$1" = "--container-stop" ]; then
+            echo "Stopping container $container_name..."
+            docker stop $container_name >/dev/null
+            docker rm $container_name >/dev/null
+            if [ $? -ne 0 ]; then
+                echo "Failed to stop container $container_name"
+                return 1
+            fi
+            echo "Stopped container $container_name"
+            return 0
+        fi
+
+        shift # remove --container or --container-stop
+
+        cp -R -L "$HOME/.config/nvim" $HOME/.nvim-devcontainer/nvim
+
+        # Build docker image for the cli if not already present.
+        if [ -z "$(docker images -q $image_tag)" ]; then
+            cd $HOME/.nvim-devcontainer
+            docker build -t $image_tag . --no-cache --build-arg UID=$(id -u) --build-arg GID=$(id -g)
+
+            if [ $? -ne 0 ]; then
+                echo "Failed to build docker image $image_tag"
+                rm -rf $HOME/.nvim-devcontainer/nvim
+                return 1
+            fi
+            clear
+
+            cd - >/dev/null
+        fi
+
+        # Start up a container and keep running it if it is not already running.
+        mount_dir=$(basename "$working_dir")
+        if [ ! "$(docker container inspect -f '{{.State.Running}}' $container_name 2>/dev/null)" = "true" ]; then
+            # remove dangling containers that may have exited but still show up during docker ps -a
+            docker ps -a | grep $container_name >/dev/null && docker rm $container_name >/dev/null
+            docker run --name "$container_name" -i ${USE_TTY} -d --user $(id -u):$(id -g) -v $working_dir:/home/devcontainer/workspaces/$mount_dir "$image_tag" tail -f /dev/null
+
+            echo "Waiting for container to start..."
+
+            until [ "$(docker container inspect -f '{{.State.Running}}' $container_name 2>/dev/null)" = "true" ]; do
+                sleep 1
+            done
+            docker cp $HOME/.nvim-devcontainer/nvim $container_name:/home/devcontainer/.config/nvim >/dev/null 2>&1
+            clear
+        fi
+
+        for arg in "$@"; do
+            install="${arg#--}"
+
+            file_path="$HOME/.nvim-devcontainer/scripts/installs/$install"
+
+            if [ -f "$file_path" ]; then
+                shift
+                echo "Running install script: $file_path"
+                docker exec -i ${USE_TTY} $container_name "sh" "/home/devcontainer/.scripts/installs/$install"
+            fi
+        done
+
+        docker exec -w "/home/devcontainer/workspaces/$mount_dir" -i ${USE_TTY} ${@} $container_name bash -c "nvim .; exec zsh"
+        rm -rf $HOME/.nvim-devcontainer/nvim
+    else
+        # use normal nvim if not in devcontainer
+        command nvim $@
+    fi
+}
